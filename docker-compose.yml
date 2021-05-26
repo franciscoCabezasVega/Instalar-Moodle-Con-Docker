@@ -1,0 +1,39 @@
+version: '3.3'
+services:
+  web:
+    container_name: savio
+    image: "kardotjs/savio:${BUILD_NUMBER}"
+    depends_on:
+      - db
+    environment:
+      MOODLE_URL: http://18.231.63.160
+      BUILD_NUMBER: ${BUILD_NUMBER}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - moodle_data:/var/moodledata
+
+  db:
+    build: ./databases
+    container_name: DB
+    image:  "kardotjs/db:${BUILD_NUMBER}"
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: moodleuser
+      MYSQL_PASSWORD: admin
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    volumes:
+      - my-db_data:/var/lib/mysql
+
+volumes:
+  my-db_data:
+    driver: local
+  moodle_data:
+    driver: local

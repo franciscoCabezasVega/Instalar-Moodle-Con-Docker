@@ -29,7 +29,7 @@ ENV MOODLE_URL=http://localhost \
 ENV SSL_PROXY false
 
 # Copying file of foreground apache2
-COPY cd ../../config/foreground.sh /etc/apache2/foreground.sh
+COPY cd ..; ./config/foreground.sh /etc/apache2/foreground.sh
 
 # Moodle requirements to install 
 RUN yum update && \
@@ -45,10 +45,10 @@ RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable3
 	chmod +x /etc/apache2/foreground.sh
 
 # Copying files to specified path
-COPY cd ../../vars/moodle-config.php /var/www/html/config.php
+COPY cd ..; ./vars/moodle-config.php /var/www/html/config.php
 
 # Moodle configuration file cron and permission
-COPY cd ../../config/moodlecron /etc/cron.d/moodlecron
+COPY cd ..; ./config/moodlecron /etc/cron.d/moodlecron
 RUN chmod 0644 /etc/cron.d/moodlecron
 
 # Enable SSL, moodle requires it

@@ -3,11 +3,12 @@ services:
   web:
     build: ./moodle
     container_name: moodle
+    image: moodle
     depends_on:
       - db
     environment:
       #Cambiar por la url de su servidor
-      MOODLE_URL: http://192.168.0.18
+      MOODLE_URL: http://localhost
     ports:
       - '80:80'
       - '443:443'
@@ -17,7 +18,7 @@ services:
   db:
     build: ./databases
     container_name: DB
-    image:  "moodle"
+    image:  mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     environment:

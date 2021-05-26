@@ -1,12 +1,12 @@
 version: '3.3'
 services:
   web:
+    build: ./moodle
     container_name: moodle
-    image: "moodle"
     depends_on:
       - db
     environment:
-      MOODLE_URL: http://18.231.63.160
+      MOODLE_URL: http://192.168.0.18
     ports:
       - '80:80'
       - '443:443'

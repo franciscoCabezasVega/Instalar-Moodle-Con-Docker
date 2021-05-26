@@ -32,8 +32,8 @@ ENV SSL_PROXY false
 COPY ./config/foreground.sh /etc/apache2/foreground.sh
 
 # Moodle requirements to install 
-RUN apt-get update && \
-    apt-get -y install mysql-client pwgen python-setuptools curl git unzip apache2 php nano \
+RUN yum update && \
+    yum -y install mysql-client pwgen python-setuptools curl git unzip apache2 php nano \
     php-gd libapache2-mod-php postfix wget supervisor php-pgsql curl libcurl4 vim \
     libcurl3-dev php-curl php-xmlrpc php-intl php-mysql git-core php-xml php-mbstring php-zip php-soap cron php-ldap
 
@@ -59,7 +59,7 @@ RUN a2enmod ssl && a2ensite default-ssl
 WORKDIR var/www/html
 	 
 # Cleanup, this is ran to reduce the resulting size of the image.
-RUN apt-get clean autoclean && apt-get autoremove -y && \
+RUN yum clean autoclean && yum autoremove -y && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/lib/dpkg/* /var/lib/cache/* /var/lib/log/*
 	
 # Entrypoint sets the command and parameters that will be executed first when a container is run.

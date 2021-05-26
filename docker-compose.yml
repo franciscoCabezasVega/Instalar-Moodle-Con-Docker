@@ -1,13 +1,12 @@
 version: '3.3'
 services:
   web:
-    container_name: savio
-    image: "kardotjs/savio:${BUILD_NUMBER}"
+    container_name: moodle
+    image: "moodle"
     depends_on:
       - db
     environment:
       MOODLE_URL: http://18.231.63.160
-      BUILD_NUMBER: ${BUILD_NUMBER}
     ports:
       - '80:80'
       - '443:443'
@@ -17,7 +16,7 @@ services:
   db:
     build: ./databases
     container_name: DB
-    image:  "kardotjs/db:${BUILD_NUMBER}"
+    image:  "moodle"
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     environment:

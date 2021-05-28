@@ -38,7 +38,7 @@ $CFG = new stdClass();
 // will be stored.  This database must already have been created         //
 // and a username/password created to access it.                         //
 
-$CFG->dbtype    = 'mysqli';      // 'pgsql', 'mariadb', 'mysqli', 'mssql', 'sqlsrv' or 'oci'
+$CFG->dbtype    = 'mysqli';      // 'pgsql', 'mariadb', 'mysqli', 'sqlsrv' or 'oci'
 $CFG->dblibrary = 'native';     // 'native' only at the moment
 $CFG->dbhost    = getenv('DB_PORT_3306_TCP_ADDR');  // eg 'localhost' or 'db.isp.com' or IP
 $CFG->dbname    = getenv('DB_ENV_MYSQL_DATABASE');     // database name, eg moodle
@@ -70,6 +70,54 @@ $CFG->dboptions = array(
                                 // can be removed for MySQL (by default it will
                                 // use 'utf8mb4_unicode_ci'. This option should
                                 // be removed for all other databases.
+    // 'fetchbuffersize' => 100000, // On PostgreSQL, this option sets a limit
+                                // on the number of rows that are fetched into
+                                // memory when doing a large recordset query
+                                // (e.g. search indexing). Default is 100000.
+                                // Uncomment and set to a value to change it,
+                                // or zero to turn off the limit. You need to
+                                // set to zero if you are using pg_bouncer in
+                                // 'transaction' mode (it is fine in 'session'
+                                // mode).
+    /*
+    'connecttimeout' => null, // Set connect timeout in seconds. Not all drivers support it.
+    'readonly' => [          // Set to read-only slave details, to get safe reads
+                             // from there instead of the master node. Optional.
+                             // Currently supported by pgsql and mysqli variety classes.
+                             // If not supported silently ignored.
+      'instance' => [        // Readonly slave connection parameters
+        [
+          'dbhost' => 'slave.dbhost',
+          'dbport' => '',    // Defaults to master port
+          'dbuser' => '',    // Defaults to master user
+          'dbpass' => '',    // Defaults to master password
+        ],
+        [...],
+      ],
+
+    Instance(s) can alternatively be specified as:
+
+      'instance' => 'slave.dbhost',
+      'instance' => ['slave.dbhost1', 'slave.dbhost2'],
+      'instance' => ['dbhost' => 'slave.dbhost', 'dbport' => '', 'dbuser' => '', 'dbpass' => ''],
+
+      'connecttimeout' => 2, // Set read-only slave connect timeout in seconds. See above.
+      'latency' => 0.5,      // Set read-only slave sync latency in seconds.
+                             // When 'latency' seconds have lapsed after an update to a table
+                             // it is deemed safe to use readonly slave for reading from the table.
+                             // It is optional. If omitted once written to a table it will always
+                             // use master handle for reading.
+                             // Lower values increase the performance, but setting it too low means
+                             // missing the master-slave sync.
+      'exclude_tables' => [  // Tables to exclude from read-only slave feature.
+          'table1',          // Should not be used, unless in rare cases when some area of the system
+          'table2',          // is malfunctioning and you still want to use readonly feature.
+      ],                     // Then one can exclude offending tables while investigating.
+
+    More info available in lib/dml/moodle_read_slave_trait.php where the feature is implemented.
+    ]
+     */
+// For all database config settings see https://docs.moodle.org/en/Database_settings
 );
 
 
@@ -150,6 +198,10 @@ $CFG->admin = 'admin';
 // any existing key.
 //      $CFG->mnetkeylifetime = 28;
 //
+// Not recommended: Set the following to true to allow the use
+// off non-Moodle standard characters in usernames.
+//      $CFG->extendedusernamechars = true;
+//
 // Allow user passwords to be included in backup files. Very dangerous
 // setting as far as it publishes password hashes that can be unencrypted
 // if the backup file is publicy available. Use it only if you can guarantee
@@ -180,6 +232,11 @@ $CFG->admin = 'admin';
 // and then restore on the target server.
 //    $CFG->forcedifferentsitecheckingusersonrestore = true;
 //
+// Force the backup system to continue to create backups in the legacy zip
+// format instead of the new tgz format. Does not affect restore, which
+// auto-detects the underlying file format.
+//    $CFG->usezipbackups = true;
+//
 // Prevent stats processing and hide the GUI
 //      $CFG->disablestatsprocessing = true;
 //
@@ -188,17 +245,17 @@ $CFG->admin = 'admin';
 //
 // These variables define DEFAULT block variables for new courses
 // If this one is set it overrides all others and is the only one used.
-//      $CFG->defaultblocks_override = 'participants,activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
+//      $CFG->defaultblocks_override = 'activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
 //
 // These variables define the specific settings for defined course formats.
 // They override any settings defined in the formats own config file.
 //      $CFG->defaultblocks_site = 'site_main_menu,course_list:course_summary,calendar_month';
-//      $CFG->defaultblocks_social = 'participants,search_forums,calendar_month,calendar_upcoming,social_activities,recent_activity,course_list';
-//      $CFG->defaultblocks_topics = 'participants,activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
-//      $CFG->defaultblocks_weeks = 'participants,activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
+//      $CFG->defaultblocks_social = 'search_forums,calendar_month,calendar_upcoming,social_activities,recent_activity,course_list';
+//      $CFG->defaultblocks_topics = 'activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
+//      $CFG->defaultblocks_weeks = 'activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
 //
 // These blocks are used when no other default setting is found.
-//      $CFG->defaultblocks = 'participants,activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
+//      $CFG->defaultblocks = 'activity_modules,search_forums,course_list:news_items,calendar_upcoming,recent_activity';
 //
 // You can specify a different class to be created for the $PAGE global, and to
 // compute which blocks appear on each page. However, I cannot think of any good
@@ -249,18 +306,30 @@ $CFG->admin = 'admin';
 //      $CFG->session_memcached_save_path = '127.0.0.1:11211';
 //      $CFG->session_memcached_prefix = 'memc.sess.key.';
 //      $CFG->session_memcached_acquire_lock_timeout = 120;
-//      $CFG->session_memcached_lock_expire = 7200;       // Ignored if memcached extension <= 2.1.0
+//      $CFG->session_memcached_lock_expire = 7200;       // Ignored if PECL memcached is below version 2.2.0
+//      $CFG->session_memcached_lock_retry_sleep = 150;   // Spin-lock retry sleeptime (msec). Only effective
+//                                                        // for tuning php-memcached 3.0.x (PHP 7)
 //
-//   Memcache session handler (requires memcached server and memcache extension):
-//      $CFG->session_handler_class = '\core\session\memcache';
-//      $CFG->session_memcache_save_path = '127.0.0.1:11211';
-//      $CFG->session_memcache_acquire_lock_timeout = 120;
-//      ** NOTE: Memcache extension has less features than memcached and may be
-//         less reliable. Use memcached where possible or if you encounter
-//         session problems. **
+//   Redis session handler (requires redis server and redis extension):
+//      $CFG->session_handler_class = '\core\session\redis';
+//      $CFG->session_redis_host = '127.0.0.1';
+//      $CFG->session_redis_port = 6379;  // Optional.
+//      $CFG->session_redis_database = 0;  // Optional, default is db 0.
+//      $CFG->session_redis_auth = ''; // Optional, default is don't set one.
+//      $CFG->session_redis_prefix = ''; // Optional, default is don't set one.
+//      $CFG->session_redis_acquire_lock_timeout = 120;
+//      $CFG->session_redis_lock_expire = 7200;
+//      $CFG->session_redis_lock_retry = 100; // Optional wait between lock attempts in ms, default is 100.
+//                                            // After 5 seconds it will throttle down to once per second.
+//      Use the igbinary serializer instead of the php default one. Note that phpredis must be compiled with
+//      igbinary support to make the setting to work. Also, if you change the serializer you have to flush the database!
+//      $CFG->session_redis_serializer_use_igbinary = false; // Optional, default is PHP builtin serializer.
+//      $CFG->session_redis_compressor = 'none'; // Optional, possible values are:
+//                                               // 'gzip' - PHP GZip compression
+//                                               // 'zstd' - PHP Zstandard compression
 //
-// Please be aware that when selecting either Memcached or Memcache for sessions that it is advised to use a dedicated
-// memcache server. The memcache and memcached extensions do not provide isolated environments for individual uses.
+// Please be aware that when selecting Memcached for sessions that it is advised to use a dedicated
+// memcache server. The memcached extension does not provide isolated environments for individual uses.
 // Using the same server for other purposes (MUC for example) can lead to sessions being prematurely removed should
 // the other uses of the server purge the cache.
 //
@@ -290,10 +359,8 @@ $CFG->admin = 'admin';
 //      $CFG->reverseproxy = true;
 //
 // Enable when using external SSL appliance for performance reasons.
-// Please note that site may be accessible via https: or https:, but not both!
-if ( getenv('SSL_PROXY') == "true" ) {
-    $CFG->sslproxy = true;
-}
+// Please note that site may be accessible via http: or https:, but not both!
+//      $CFG->sslproxy = true;
 //
 // This setting will cause the userdate() function not to fix %d in
 // date strings, and just let them show with a zero prefix.
@@ -301,6 +368,11 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //
 // This setting will make some graphs (eg user logs) use lines instead of bars
 //      $CFG->preferlinegraphs = true;
+//
+// This setting allows you to specify a class to rewrite outgoing urls
+// enabling 'clean urls' in conjunction with an apache / nginx handler.
+// The handler must implement \core\output\url_rewriter.
+//      $CFG->urlrewriteclass = '\local_cleanurls\url_rewriter';
 //
 // Enabling this will allow custom scripts to replace existing moodle scripts.
 // For example: if $CFG->customscripts/course/view.php exists then
@@ -344,20 +416,17 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //   profilingallowme, profilingallowall, profilinglifetime
 //       $CFG->earlyprofilingenabled = true;
 //
+// Disable database storage for profile data.
+// When using an exernal plugin to store profiling data it is often
+// desirable to not store the data in the database.
+//
+//      $CFG->disableprofilingtodatabase = true;
+//
 // Force displayed usernames
 //   A little hack to anonymise user names for all students.  If you set these
 //   then all non-teachers will always see these for every person.
 //       $CFG->forcefirstname = 'Bruce';
 //       $CFG->forcelastname  = 'Simpson';
-//
-// The following setting will turn SQL Error logging on. This will output an
-// entry in apache error log indicating the position of the error and the statement
-// called. This option will action disregarding error_reporting setting.
-//     $CFG->dblogerror = true;
-//
-// The following setting will log every database query to a table called adodb_logsql.
-// Use this setting on a development server only, the table grows quickly!
-//     $CFG->logsql = true;
 //
 // The following setting will turn on username logging into Apache log. For full details regarding setting
 // up of this function please refer to the install section of the document.
@@ -370,7 +439,15 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //     LogFormat "%h %l %{MOODLEUSER}n %t \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\"" moodleformat
 // And in the part specific to your Moodle install / virtualhost:
 //     CustomLog "/your/path/to/log" moodleformat
-// CAUTION: Use of this option will expose usernames in the Apache log,
+//
+// Alternatively for other webservers such as nginx, you can instead have the username sent via a http header
+// 'X-MOODLEUSER' which can be saved in the logfile and then stripped out before being sent to the browser:
+//     $CFG->headerloguser = 0; // Turn this feature off. Default value.
+//     $CFG->headerloguser = 1; // Log user id.
+//     $CFG->headerloguser = 2; // Log full name in cleaned format. ie, Darth Vader will be displayed as darth_vader.
+//     $CFG->headerloguser = 3; // Log username.
+//
+// CAUTION: Use of this option will expose usernames in the Apache / nginx log,
 // If you are going to publish your log, or the output of your web stats analyzer
 // this will weaken the security of your website.
 //
@@ -383,8 +460,10 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // example) in sites where the user theme should override all other theme
 // settings for accessibility reasons. You can also disable types of themes
 // (other than site)  by removing them from the array. The default setting is:
-//      $CFG->themeorder = array('course', 'category', 'session', 'user', 'site');
-// NOTE: course, category, session, user themes still require the
+//
+//     $CFG->themeorder = array('course', 'category', 'session', 'user', 'cohort', 'site');
+//
+// NOTE: course, category, session, user, cohort themes still require the
 // respective settings to be enabled
 //
 // It is possible to add extra themes directory stored outside of $CFG->dirroot.
@@ -397,9 +476,16 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // Localcachedir is intended for server clusters, it does not have to be shared by cluster nodes.
 // The directories must not be accessible via web.
 //
-//     $CFG->tempdir = '/var/www/moodle/temp';        // Files used during one HTTP request only.
+//     $CFG->tempdir = '/var/www/moodle/temp';        // Directory MUST BE SHARED by all cluster nodes.
 //     $CFG->cachedir = '/var/www/moodle/cache';      // Directory MUST BE SHARED by all cluster nodes, locking required.
 //     $CFG->localcachedir = '/var/local/cache';      // Intended for local node caching.
+//     $CFG->localrequestdir = '/tmp';                // Intended for local only temporary files. The defaults uses sys_get_temp_dir().
+//
+// It is possible to specify a different backup temp directory, use local fast filesystem
+// for normal web servers. Server clusters MUST use shared filesystem for backuptempdir!
+// The directory must not be accessible via web.
+//
+//     $CFG->backuptempdir = '/var/www/moodle/backuptemp';  // Directory MUST BE SHARED by all cluster nodes.
 //
 // Some filesystems such as NFS may not support file locking operations.
 // Locking resolves race conditions and is strongly recommended for production servers.
@@ -409,7 +495,7 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // want to have initial error messages for eventual database connection problems
 // localized too, you have to set your language code here.
 //
-   $CFG->lang = getenv('MOODLE_LANGUAGE'); // for example 'cs'
+$CFG->lang = getenv('MOODLE_LANGUAGE'); // for example 'cs'
 //
 // When Moodle is about to perform an intensive operation it raises PHP's memory
 // limit. The following setting should be used on large sites to set the raised
@@ -429,46 +515,24 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //
 //     $CFG->altcacheconfigpath = '/var/www/shared/moodle.cache.config.php
 //
-// The CSS files the Moodle produces can be extremely large and complex, especially
-// if you are using a custom theme that builds upon several other themes.
-// In Moodle 2.3 a CSS optimiser was added as an experimental feature for advanced
-// users. The CSS optimiser organises the CSS in order to reduce the overall number
-// of rules and styles being sent to the client. It does this by collating the
-// CSS before it is cached removing excess styles and rules and stripping out any
-// extraneous content such as comments and empty rules.
-// The following settings are used to enable and control the optimisation.
-//
-// Enable the CSS optimiser. This will only optimise the CSS if themedesignermode
-// is not enabled. This can be set through the UI however it is noted here as well
-// because the other CSS optimiser settings can not be set through the UI.
-//
-//      $CFG->enablecssoptimiser = true;
-//
-// If set the CSS optimiser will add stats about the optimisation to the top of
-// the optimised CSS file. You can then inspect the CSS to see the affect the CSS
-// optimiser is having.
-//
-//      $CFG->cssoptimiserstats = true;
-//
-// If set the CSS that is optimised will still retain a minimalistic formatting
-// so that anyone wanting to can still clearly read it.
-//
-//      $CFG->cssoptimiserpretty = true;
-//
 // Use the following flag to completely disable the Available update notifications
 // feature and hide it from the server administration UI.
 //
 //      $CFG->disableupdatenotifications = true;
 //
-// Use the following flag to completely disable the Automatic updates deployment
-// feature and hide it from the server administration UI.
+// Use the following flag to completely disable the installation of plugins
+// (new plugins, available updates and missing dependencies) and related
+// features (such as cancelling the plugin installation or upgrade) via the
+// server administration web interface.
 //
 //      $CFG->disableupdateautodeploy = true;
 //
-// Use the following flag to completely disable the On-click add-on installation
-// feature and hide it from the server administration UI.
+// Use the following flag to disable the warning on the system notifications page
+// about present development libraries. This flag will not disable the warning within
+// the security overview report. Use this flag only if you really have prohibited web
+// access to the development libraries in your webserver configuration.
 //
-//      $CFG->disableonclickaddoninstall = true;
+//      $CFG->disabledevlibdirscheck = true;
 //
 // Use the following flag to disable modifications to scheduled tasks
 // whilst still showing the state of tasks.
@@ -502,9 +566,9 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //      $CFG->supportuserid = -20;
 //
 // Moodle 2.7 introduces a locking api for critical tasks (e.g. cron).
-// The default locking system to use is DB locking for MySQL and Postgres, and File
-// locking for Oracle and SQLServer. If $CFG->preventfilelocking is set, then the default
-// will always be DB locking. It can be manually set to one of the lock
+// The default locking system to use is DB locking for Postgres, MySQL, MariaDB and
+// file locking for Oracle and SQLServer. If $CFG->preventfilelocking is set, then the
+// default will always be DB locking. It can be manually set to one of the lock
 // factory classes listed below, or one of your own custom classes implementing the
 // \core\lock\lock_factory interface.
 //
@@ -516,7 +580,9 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //      Uses lock files stored by default in the dataroot. Whether this
 //      works on clusters depends on the file system used for the dataroot.
 //
-// "\\core\\lock\\db_row_lock_factory" - DB locking based on table rows.
+// "\\core\\lock\\db_record_lock_factory" - DB locking based on table rows.
+//
+// "\\core\\lock\\mysql_lock_factory" - DB locking based on MySQL / MariaDB locks.
 //
 // "\\core\\lock\\postgres_lock_factory" - DB locking based on postgres advisory locks.
 //
@@ -524,8 +590,164 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //
 // Location for lock files used by the File locking factory. This must exist
 // on a shared file system that supports locking.
-//      $CFG->lock_file_root = $CFG->dataroot . '/lock';
+//      $CFG->file_lock_root = $CFG->dataroot . '/lock';
 //
+//
+// Alternative task logging.
+// Since Moodle 3.7 the output of al scheduled and adhoc tasks is stored in the database and it is possible to use an
+// alternative task logging mechanism.
+// To set the alternative task logging mechanism in config.php you can use the following settings, providing the
+// alternative class name that will be auto-loaded.
+//
+//      $CFG->task_log_class = '\\local_mytasklogger\\logger';
+//
+// Moodle 2.9 allows administrators to customise the list of supported file types.
+// To add a new filetype or override the definition of an existing one, set the
+// customfiletypes variable like this:
+//
+// $CFG->customfiletypes = array(
+//     (object)array(
+//         'extension' => 'frog',
+//         'icon' => 'archive',
+//         'type' => 'application/frog',
+//         'customdescription' => 'Amphibian-related file archive'
+//     )
+// );
+//
+// The extension, icon, and type fields are required. The icon field can refer to
+// any icon inside the pix/f folder. You can also set the customdescription field
+// (shown above) and (for advanced use) the groups, string, and defaulticon fields.
+//
+// Upgrade key
+//
+// If the upgrade key is defined here, then the value must be provided every time
+// the site is being upgraded though the web interface, regardless of whether the
+// administrator is logged in or not. This prevents anonymous access to the upgrade
+// screens where the real authentication and authorization mechanisms can not be
+// relied on.
+//
+// It is strongly recommended to use a value different from your real account
+// password.
+//
+//      $CFG->upgradekey = 'put_some_password-like_value_here';
+//
+// Document conversion limit
+//
+// How many times the background task should attempt to convert a given attempt
+// before removing it from the queue. Currently this limit is only used by the
+// mod_assign conversion task.
+//
+//      $CFG->conversionattemptlimit = 3;
+//
+// Font used in exported PDF files. When generating a PDF, Moodle embeds a subset of
+// the font in the PDF file so it will be readable on the widest range of devices.
+// The default font is 'freesans' which is part of the GNU FreeFont collection.
+//
+//      $CFG->pdfexportfont = 'freesans';
+//
+// Use the following flag to enable messagingallusers and set the default preference
+// value for existing users to allow them to be contacted by other site users.
+//
+//      $CFG->keepmessagingallusersenabled = true;
+//
+// Disable login token validation for login pages. Login token validation is enabled
+// by default unless $CFG->alternateloginurl is set.
+//
+//      $CFG->disablelogintoken = true;
+//
+// Moodle 3.7+ checks that cron is running frequently. If the time between cron runs
+// is greater than this value (in seconds), you get a warning on the admin page. (This
+// setting only controls whether or not the warning appears, it has no other effect.)
+//
+//      $CFG->expectedcronfrequency = 200;
+//
+// Moodle 3.9+ checks how old tasks are in the ad hoc queue and warns at 10 minutes
+// and errors at 4 hours. Set these to override these limits:
+//
+//      $CFG->adhoctaskagewarn = 10 * 60;
+//      $CFG->adhoctaskageerror = 4 * 60 * 60;
+//
+// Session lock warning threshold. Long running pages should release the session using \core\session\manager::write_close().
+// Set this threshold to any value greater than 0 to add developer warnings when a page locks the session for too long.
+// The session should rarely be locked for more than 1 second. The input should be in seconds and may be a float.
+//
+//      $CFG->debugsessionlock = 5;
+//
+// There are times when a session lock is not required during a request. For a page/service to opt-in whether or not a
+// session lock is required this setting must first be set to 'true'.
+// This is an experimental issue. The session store can not be in the session, please
+// see https://docs.moodle.org/en/Session_handling#Read_only_sessions.
+//
+//      $CFG->enable_read_only_sessions = true;
+//
+// To help expose all the edge cases bugs a debug mode is available which shows the same
+// runtime write during readonly errors without actually turning on the readonly sessions:
+//
+//      $CFG->enable_read_only_sessions_debug = true;
+//
+// Uninstall plugins from CLI only. This stops admins from uninstalling plugins from the graphical admin
+// user interface, and forces plugins to be uninstalled from the Command Line tool only, found at
+// admin/cli/plugin_uninstall.php.
+//
+//      $CFG->uninstallclionly = true;
+//
+//
+// Customise question bank display
+//
+// The display of Moodle's question bank is made up of a number of columns.
+// You can customise this display by giving a comma-separated list of column class
+// names here. Each class must be a subclass of \core_question\bank\column_base.
+// For example you might define a class like
+//      class \local_qbank_extensions\my_column extends \core_question\bank\column_base
+// in a local plugin, then add it to the list here. At the time of writing,
+// the default question bank display is equivalent to the following, but you  might like
+// to check the latest default in question/classes/bank/view.php before setting this.
+//
+//      $CFG->questionbankcolumns = 'checkbox_column,question_type_column,'
+//              . 'question_name_idnumber_tags_column,edit_menu_column,'
+//              . 'tags_action_column,edit_action_column,copy_action_column,'
+//              . 'preview_action_column,delete_action_column,export_xml_action_column,'
+//              . 'creator_name_column,modifier_name_column';
+//
+// Forum summary report
+//
+// In order for the forum summary report to calculate word count and character count data, those details are now stored
+// for each post in the database when posts are created or updated. For posts that existed prior to a Moodle 3.8 upgrade,
+// these are calculated by the refresh_forum_post_counts ad-hoc task in chunks of 5000 posts per batch by default.
+// That default can be overridden by setting an integer value for $CFG->forumpostcountchunksize.
+//
+//      $CFG->forumpostcountchunksize = 5000;
+//
+// Course and category sorting
+//
+// If the number of courses in a category exceeds $CFG->maxcoursesincategory (10000 by default), it may lead to duplicate
+// sort orders of courses in separated categories. For example:
+// - Category A has the sort order of 10000, and has 10000 courses. The last course will have the sort order of 20000.
+// - Category B has the sort order of 20000, and has a course with the sort order of 20001.
+// - If we add another course in category A, it will have a sort order of 20001,
+// which is the same as the course in category B
+// The duplicate will cause sorting issue and hence we need to increase $CFG->maxcoursesincategory
+// to fix the duplicate sort order
+// Please also make sure $CFG->maxcoursesincategory * MAX_COURSE_CATEGORIES less than max integer.
+//
+// $CFG->maxcoursesincategory = 10000;
+//
+// Admin setting encryption
+//
+//      $CFG->secretdataroot = '/var/www/my_secret_folder';
+//
+// Location to store encryption keys. By default this is $CFG->dataroot/secret; set this if
+// you want to use a different location for increased security (e.g. if too many people have access
+// to the main dataroot, or if you want to avoid using shared storage). Your web server user needs
+// read access to this location, and write access unless you manually create the keys.
+//
+//      $CFG->nokeygeneration = false;
+//
+// If you change this to true then the server will give an error if keys don't exist, instead of
+// automatically generating them. This is only needed if you want to ensure that keys are consistent
+// across a cluster when not using shared storage. If you stop the server generating keys, you will
+// need to manually generate them by running 'php admin/cli/generate_key.php'.
+
 //=========================================================================
 // 7. SETTINGS FOR DEVELOPMENT SERVERS - not intended for production use!!!
 //=========================================================================
@@ -544,19 +766,27 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // Prevent theme caching
 // $CFG->themedesignermode = true; // NOT FOR PRODUCTION SERVERS!
 //
+// Enable verbose debug information during fetching of email messages from IMAP server.
+// $CFG->debugimap = true;
+//
+// Enable verbose debug information during sending of email messages to SMTP server.
+// Note: also requires $CFG->debug set to DEBUG_DEVELOPER.
+// $CFG->debugsmtp = true;
+//
 // Prevent JS caching
 // $CFG->cachejs = false; // NOT FOR PRODUCTION SERVERS!
+//
+// Prevent Template caching
+// $CFG->cachetemplates = false; // NOT FOR PRODUCTION SERVERS!
 //
 // Restrict which YUI logging statements are shown in the browser console.
 // For details see the upstream documentation:
 //   http://yuilibrary.com/yui/docs/api/classes/config.html#property_logInclude
 //   http://yuilibrary.com/yui/docs/api/classes/config.html#property_logExclude
 // $CFG->yuiloginclude = array(
-//     'moodle-core-dock-loader' => true,
 //     'moodle-course-categoryexpander' => true,
 // );
 // $CFG->yuilogexclude = array(
-//     'moodle-core-dock' => true,
 //     'moodle-core-notification' => true,
 // );
 //
@@ -575,6 +805,10 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // Divert all outgoing emails to this address to test and debug emailing features
 // $CFG->divertallemailsto = 'root@localhost.local'; // NOT FOR PRODUCTION SERVERS!
 //
+// Except for certain email addresses you want to let through for testing. Accepts
+// a comma separated list of regexes.
+// $CFG->divertallemailsexcept = 'tester@dev.com, fred(\+.*)?@example.com'; // NOT FOR PRODUCTION SERVERS!
+//
 // Uncomment if you want to allow empty comments when modifying install.xml files.
 // $CFG->xmldbdisablecommentchecking = true;    // NOT FOR PRODUCTION SERVERS!
 //
@@ -587,6 +821,9 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //
 // Force developer level debug and add debug info to the output of cron
 // $CFG->showcrondebugging = true;
+//
+// Force result of checks used to determine whether a site is considered "public" or not (such as for site registration).
+// $CFG->site_is_public = false;
 //
 //=========================================================================
 // 8. FORCED SETTINGS
@@ -613,6 +850,7 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // $CFG->phpunit_prefix = 'phpu_';
 // $CFG->phpunit_dataroot = '/home/example/phpu_moodledata';
 // $CFG->phpunit_directorypermissions = 02777; // optional
+// $CFG->phpunit_profilingenabled = true; // optional to profile PHPUnit runs.
 //
 //
 //=========================================================================
@@ -650,19 +888,17 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // params hierarchy. More info: http://docs.behat.org/guides/7.config.html
 // Example:
 //   $CFG->behat_config = array(
-//       'default' => array(
-//           'formatter' => array(
-//               'name' => 'pretty',
-//               'parameters' => array(
-//                   'decorated' => true,
-//                   'verbose' => false
-//               )
-//           )
-//       ),
 //       'Mac-Firefox' => array(
+//           'suites' => array (
+//               'default' => array(
+//                   'filters' => array(
+//                      'tags' => '~@_file_upload'
+//                   ),
+//               ),
+//           ),
 //           'extensions' => array(
-//               'Behat\MinkExtension\Extension' => array(
-//                   'selenium2' => array(
+//               'Behat\MinkExtension' => array(
+//                   'webddriver' => array(
 //                       'browser' => 'firefox',
 //                       'capabilities' => array(
 //                           'platform' => 'OS X 10.6',
@@ -674,8 +910,8 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //       ),
 //       'Mac-Safari' => array(
 //           'extensions' => array(
-//               'Behat\MinkExtension\Extension' => array(
-//                   'selenium2' => array(
+//               'Behat\MinkExtension' => array(
+//                   'webddriver' => array(
 //                       'browser' => 'safari',
 //                       'capabilities' => array(
 //                           'platform' => 'OS X 10.8',
@@ -686,24 +922,37 @@ if ( getenv('SSL_PROXY') == "true" ) {
 //           )
 //       )
 //   );
-//
-// You can force the browser session (not user's sessions) to restart after N seconds. This could
-// be useful if you are using a cloud-based service with time restrictions in the browser side.
-// Setting this value the browser session that Behat is using will be restarted. Set the time in
-// seconds. Is not recommended to use this setting if you don't explicitly need it.
-// Example:
-//   $CFG->behat_restart_browser_after = 7200;     // Restarts the browser session after 2 hours
+// You can also use the following config to override default Moodle configuration for Behat.
+// This config is limited to default suite and will be supported in later versions.
+// It will have precedence over $CFG->behat_config.
+// $CFG->behat_profiles = array(
+//     'phantomjs' => array(
+//         'browser' => 'phantomjs',
+//         'tags' => '~@_file_upload&&~@_alert&&~@_bug_phantomjs',
+//         'wd_host' => 'http://127.0.0.1:4443/wd/hub',
+//         'capabilities' => array(
+//             'platform' => 'Linux',
+//             'version' => 2.1
+//         )
+//     ),
+// );
 //
 // All this page's extra Moodle settings are compared against a white list of allowed settings
 // (the basic and behat_* ones) to avoid problems with production environments. This setting can be
 // used to expand the default white list with an array of extra settings.
 // Example:
-//   $CFG->behat_extraallowedsettings = array('logsql', 'dblogerror');
+//   $CFG->behat_extraallowedsettings = array('somecoresetting', ...);
 //
 // You should explicitly allow the usage of the deprecated behat steps, otherwise an exception will
 // be thrown when using them. The setting is disabled by default.
 // Example:
 //   $CFG->behat_usedeprecated = true;
+//
+// If you are using a slow machine, it may help to increase the timeouts that Behat uses. The
+// following example will increase timeouts by a factor of 3 (using 30 seconds instead of 10
+// seconds, for instance).
+// Example:
+//   $CFG->behat_increasetimeout = 3;
 //
 // Including feature files from directories outside the dirroot is possible if required. The setting
 // requires that the running user has executable permissions on all parent directories in the paths.
@@ -715,6 +964,61 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // * a screenshot (JavaScript is required for the screenshot functionality, so not all browsers support this option)
 // Example:
 //   $CFG->behat_faildump_path = '/my/path/to/save/failure/dumps';
+//
+// You can make behat pause upon failure to help you diagnose and debug problems with your tests.
+//
+//   $CFG->behat_pause_on_fail = true;
+//
+// You can specify db, selenium wd_host etc. for behat parallel run by setting following variable.
+// Example:
+//   $CFG->behat_parallel_run = array (
+//       array (
+//           'dbtype' => 'mysqli',
+//           'dblibrary' => 'native',
+//           'dbhost' => 'localhost',
+//           'dbname' => 'moodletest',
+//           'dbuser' => 'moodle',
+//           'dbpass' => 'moodle',
+//           'behat_prefix' => 'mdl_',
+//           'wd_host' => 'http://127.0.0.1:4444/wd/hub',
+//           'behat_wwwroot' => 'http://127.0.0.1/moodle',
+//           'behat_dataroot' => '/home/example/bht_moodledata'
+//       ),
+//   );
+//
+// To change name of behat parallel run site, define BEHAT_PARALLEL_SITE_NAME and parallel run sites will be suffixed
+// with this value
+// Example:
+//   define('BEHAT_PARALLEL_SITE_NAME', 'behatparallelsite');
+//
+// Command line output for parallel behat install is limited to 80 chars, if you are installing more then 4 sites and
+// want to expand output to more then 80 chars, then define BEHAT_MAX_CMD_LINE_OUTPUT
+// Example:
+//   define('BEHAT_MAX_CMD_LINE_OUTPUT', 120);
+//
+// Behat feature files will be distributed randomly between the processes by default. If you have timing file or want
+// to create timing file then define BEHAT_FEATURE_TIMING_FILE with path to timing file. It will be updated for each
+// run with latest time taken to execute feature.
+// Example:
+//   define('BEHAT_FEATURE_TIMING_FILE', '/PATH_TO_TIMING_FILE/timing.json');
+//
+// If you don't have timing file and want some stable distribution of features, then you can use step counts to
+// distribute the features. You can generate step file by executing php admin/tool/behat/cli/util.php --updatesteps
+// this will update step file which is defined by BEHAT_FEATURE_STEP_FILE.
+// Example:
+//   define('BEHAT_FEATURE_STEP_FILE', '/PATH_TO_FEATURE_STEP_COUNT_FILE/stepcount.json');
+//
+// Feature distribution for each process is displayed as histogram. you can disable it by setting
+// BEHAT_DISABLE_HISTOGRAM
+// Example:
+//   define('BEHAT_DISABLE_HISTOGRAM', true);
+//
+// Mobile app Behat testing requires this option, pointing to a developer Moodle app directory:
+//   $CFG->behat_ionic_dirroot = '/where/I/keep/my/git/checkouts/moodleapp';
+//
+// The following option can be used to indicate a running Ionic server (otherwise Behat will start
+// one automatically for each test run, which is convenient but takes ages):
+//   $CFG->behat_ionic_wwwroot = 'http://localhost:8100';
 //
 //=========================================================================
 // 12. DEVELOPER DATA GENERATOR
@@ -740,10 +1044,10 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // and 'gsdll32.dll' to a new folder without a space in the path)
 //      $CFG->pathtogs = '/usr/bin/gs';
 //
-// Clam AV path.
-// Probably something like /usr/bin/clamscan or /usr/bin/clamdscan. You need
-// this in order for clam AV to run.
-//      $CFG->pathtoclam = '';
+// Path to PHP CLI.
+// Probably something like /usr/bin/php. If you enter this, cron scripts can be
+// executed from admin web interface.
+// $CFG->pathtophp = '';
 //
 // Path to du.
 // Probably something like /usr/bin/du. If you enter this, pages that display
@@ -763,12 +1067,91 @@ if ( getenv('SSL_PROXY') == "true" ) {
 // Note that, for now, this only used by the profiling features
 // (Development->Profiling) built into Moodle.
 //      $CFG->pathtodot = '';
-
+//
+// Path to unoconv.
+// Probably something like /usr/bin/unoconv. Used as a fallback to convert between document formats.
+// Unoconv is used convert between file formats supported by LibreOffice.
+// Use a recent version of unoconv ( >= 0.7 ), older versions have trouble running from a webserver.
+//      $CFG->pathtounoconv = '';
+//
+//=========================================================================
+// 14. ALTERNATIVE FILE SYSTEM SETTINGS
+//=========================================================================
+//
+// Alternative file system.
+// Since 3.3 it is possible to override file_storage and file_system API and use alternative storage systems (e.g. S3,
+// Rackspace Cloud Files, Google Cloud Storage, Azure Storage, etc.).
+// To set the alternative file storage system in config.php you can use the following setting, providing the
+// alternative system class name that will be auto-loaded by file_storage API.
+//
+//      $CFG->alternative_file_system_class = '\\local_myfilestorage\\file_system';
+//
+//=========================================================================
+// 15. CAMPAIGN CONTENT
+//=========================================================================
+//
+// We have added a campaign content to the notifications page, in case you want to hide that from your site you just
+// need to set showcampaigncontent setting to false.
+//
+//      $CFG->showcampaigncontent = true;
+//
+//=========================================================================
+// 16. ALTERNATIVE CACHE CONFIG SETTINGS
+//=========================================================================
+//
+// Alternative cache config.
+// Since 3.10 it is possible to override the cache_factory class with an alternative caching factory.
+// This overridden factory can provide alternative classes for caching such as cache_config,
+// cache_config_writer and core_cache\local\administration_display_helper.
+// The autoloaded factory class name can be specified to use.
+//
+//      $CFG->alternative_cache_factory_class = 'tool_alternativecache_cache_factory';
+//
+//=========================================================================
+// 17. SCHEDULED TASK OVERRIDES
+//=========================================================================
+//
+// It is now possible to define scheduled tasks directly within config.
+// The overridden value will take precedence over the values that have been set VIA the UI from the
+// next time the task is run.
+//
+// Tasks are configured as an array of tasks that can override a task's schedule, as well as setting
+// the task as disabled. I.e:
+//
+//      $CFG->scheduled_tasks = [
+//          '\local_plugin\task\my_task' => [
+//              'schedule' => '*/15 0 0 0 0',
+//              'disabled' => 0,
+//          ],
+//      ];
+//
+// The format for the schedule definition is: '{minute} {hour} {day} {dayofweek} {month}'.
+//
+// The classname of the task also supports wildcards:
+//
+//      $CFG->scheduled_tasks = [
+//          '\local_plugin\*' => [
+//              'schedule' => '*/15 0 0 0 0',
+//              'disabled' => 0,
+//          ],
+//          '*' => [
+//              'schedule' => '0 0 0 0 0',
+//              'disabled' => 0,
+//          ],
+//      ];
+//
+// In this example, any task classnames matching '\local_plugin\*' would match the first rule and
+// use that schedule the next time the task runs. Note that even though the 'local_plugin' tasks match
+// the second rule as well, the highest rule takes precedence. Therefore, the second rule would be
+// applied to all tasks, except for tasks within '\local_plugin\'.
+//
+// When the full classname is used, this rule always takes priority over any wildcard rules.
+//
 //=========================================================================
 // ALL DONE!  To continue installation, visit your main page with a browser
 //=========================================================================
 
-require_once(dirname(__FILE__) . '/lib/setup.php'); // Do not edit
+require_once(__DIR__ . '/lib/setup.php'); // Do not edit
 
 // There is no php closing tag in this file,
 // it is intentional because it prevents trailing whitespace problems!

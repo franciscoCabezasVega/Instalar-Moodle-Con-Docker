@@ -30,25 +30,30 @@ ENV SSL_PROXY false
 
 # Moodle requirements to install 
 RUN yum update -y && \
+    yum install epel-release httpd -y && \
     yum install httpd -y && \
-    yum install policycoreutils-python curl nano cron -y
+    yum install policycoreutils-python curl nano cron \
+    pwgen python-setuptools git unzip apache2 \
+    postfix wget supervisor libcurl4 vim \
+    libcurl3-dev git-core -y
 
 # Dowload Moodle from official page 
-RUN curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \
-    tar xf moodle-latest-311.tgz -C /var/www/html/ && \
-    chown -R apache: /var/www/html/moodle/ && \
+RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \
+    tar zxvf moodle-latest-311.tgz; mv /var/tmp/moodle/* /var/www/html/ && \
+    chown -R apache: /var/www/html/ && \
     mkdir /var/www/moodledata && \
-    chown apache: /var/www/moodledata/
+    chown -R 755 /var/www/moodledata/ && \
+    sed -i 's/^/#&/g' /etc/httpd/conf.d/welcome.conf 
 
 # Install PHP
-RUN yum install php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip -y
+RUN yum install php php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip \
+    libapache2-mod-php php-zip php-ldap -y
 
 # Setting and select the DB
-RUN yum install mysql-client php-mysql -y 
-# RUN yum -y install php-pgsql
+RUN yum install mysql-client php-mysql php-pgsql -y
 
 # Copying files to specified path
-COPY ./vars/moodle-config.php /var/www/html/config.php/
+COPY ./vars/moodle-config.php /var/www/html/config.php
 
 # Moodle configuration file cron and permission
 COPY ./config/moodlecron /etc/cron.d/moodlecron/
@@ -56,3 +61,9 @@ RUN chmod 0644 /etc/cron.d/moodlecron
 
 # Defining working directory
 WORKDIR /var/www/html
+
+# Cleanup, this is ran to reduce the resulting size of the image.
+RUN rm -rf /var/tmp/*
+
+# Entrypoint sets the command and parameters that will be executed first when a container is run.
+ENTRYPOINT ["/usr/sbin/httpd", "-D", "FOREGROUND"]

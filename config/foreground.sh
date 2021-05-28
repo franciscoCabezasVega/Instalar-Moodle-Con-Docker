@@ -10,6 +10,6 @@ trap "kill -TERM -$pgrp; exit" EXIT TERM KILL SIGKILL SIGTERM SIGQUIT
 #start up cron
 /usr/sbin/cron
 
-source /etc/apache2/envvars
-tail -F /var/log/apache2/* &
-exec apache2 -D FOREGROUND
+source /var/www/html/envvars
+tail -F /var/log/httpd/* &
+exec httpd -D FOREGROUND

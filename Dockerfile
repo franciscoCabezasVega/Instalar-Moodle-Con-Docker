@@ -22,27 +22,30 @@ ENV MOODLE_URL=http://localhost \
     MYSQL_PASSWORD=admin \
     DB_ENV_MYSQL_PASSWORD=admin \
     DB_PORT_3306_TCP_ADDR=DB \
-    MOODLE_LANGUAGE=es
+    MOODLE_LANGUAGE=es_co
 
 # Enable when using external SSL reverse proxy
 # Default: false
 ENV SSL_PROXY false
 
-# Copying file of foreground apache2
-COPY ./config/foreground.sh /var/www/html/foreground.sh/
-
 # Moodle requirements to install 
-RUN yum install epel-release -y && \
-    yum update -y && \
+RUN yum update -y && \
     yum install httpd -y && \
-    rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm && \
-    yum install curl mysql-client mod_php71w php71w-common php71w-mbstring php71w-xmlrpc php71w-soap php71w-gd php71w-xml php71w-intl php71w-mysqlnd php71w-cli php71w-mcrypt php71w-ldap -y
+    yum install policycoreutils-python curl nano cron -y
 
 # Dowload Moodle from official page 
-RUN curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \ 
-	tar zxvf moodle-latest-311.tgz -C /var/www/html && \
-    chown -R root:root /var/www/html/moodle && \
-    chmod -R 755 /var/www/html/foreground.sh
+RUN curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \
+    tar xf moodle-latest-311.tgz -C /var/www/html/ && \
+    chown -R apache: /var/www/html/moodle/ && \
+    mkdir /var/www/moodledata && \
+    chown apache: /var/www/moodledata/
+
+# Install PHP
+RUN yum install php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip -y
+
+# Setting and select the DB
+RUN yum install mysql-client php-mysql -y 
+# RUN yum -y install php-pgsql
 
 # Copying files to specified path
 COPY ./vars/moodle-config.php /var/www/html/config.php/
@@ -53,6 +56,3 @@ RUN chmod 0644 /etc/cron.d/moodlecron
 
 # Defining working directory
 WORKDIR /var/www/html
-	
-# Entrypoint sets the command and parameters that will be executed first when a container is run.
-ENTRYPOINT ["/etc/apache2/foreground.sh"]

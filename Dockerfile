@@ -47,7 +47,7 @@ RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable3
     sed -i 's/^/#&/g' /etc/httpd/conf.d/welcome.conf 
 
 # Install PHP
-RUN yum install php php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip \
+RUN yum install php7 php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip \
     libapache2-mod-php php-zip php-ldap -y
 
 # Setting and select the DB

@@ -29,38 +29,30 @@ ENV MOODLE_URL=http://localhost \
 ENV SSL_PROXY false
 
 # Copying file of foreground apache2
-COPY cd ..; ./config/foreground.sh /etc/apache2/foreground.sh
+COPY ./config/foreground.sh /var/www/html/foreground.sh/
 
 # Moodle requirements to install 
-RUN yum update && \
-    yum -y install mysql-client pwgen python-setuptools curl git unzip apache2 php nano \
-    php-gd libapache2-mod-php postfix wget supervisor php-pgsql curl libcurl4 vim \
-    libcurl3-dev php-curl php-xmlrpc php-intl php-mysql git-core php-xml php-mbstring php-zip php-soap cron php-ldap
+RUN yum install epel-release -y && \
+    yum update -y && \
+    yum install httpd -y && \
+    rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm && \
+    yum install curl mysql-client mod_php71w php71w-common php71w-mbstring php71w-xmlrpc php71w-soap php71w-gd php71w-xml php71w-intl php71w-mysqlnd php71w-cli php71w-mcrypt php71w-ldap -y
 
 # Dowload Moodle from official page 
-RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \ 
-	tar zxvf moodle-latest-311.tgz; mv /var/tmp/moodle/* /var/www/html && \ 
-	chown -R www-data:www-data /var/www/html && \
-	rm /var/www/html/index.html && \
-	chmod +x /etc/apache2/foreground.sh
+RUN curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \ 
+	tar zxvf moodle-latest-311.tgz -C /var/www/html && \
+    chown -R root:root /var/www/html/moodle && \
+    chmod -R 755 /var/www/html/foreground.sh
 
 # Copying files to specified path
-COPY cd ..; ./vars/moodle-config.php /var/www/html/config.php
+COPY ./vars/moodle-config.php /var/www/html/config.php/
 
 # Moodle configuration file cron and permission
-COPY cd ..; ./config/moodlecron /etc/cron.d/moodlecron
+COPY ./config/moodlecron /etc/cron.d/moodlecron/
 RUN chmod 0644 /etc/cron.d/moodlecron
 
-# Enable SSL, moodle requires it
-RUN a2enmod ssl && a2ensite default-ssl  
-# if using proxy dont need actually secure connection
-
 # Defining working directory
-WORKDIR var/www/html
-	 
-# Cleanup, this is ran to reduce the resulting size of the image.
-RUN yum clean autoclean && yum autoremove -y && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /var/lib/dpkg/* /var/lib/cache/* /var/lib/log/*
+WORKDIR /var/www/html
 	
 # Entrypoint sets the command and parameters that will be executed first when a container is run.
 ENTRYPOINT ["/etc/apache2/foreground.sh"]

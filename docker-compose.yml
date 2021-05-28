@@ -1,7 +1,9 @@
 version: '3.3'
 services:
   web:
-    build: ./moodle
+    build:
+      context: ./
+      dockerfile: Dockerfile
     container_name: moodle
     image: moodle
     depends_on:

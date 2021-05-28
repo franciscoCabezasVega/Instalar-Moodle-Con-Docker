@@ -41,8 +41,9 @@ RUN yum update -y && \
 RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \
     tar zxvf moodle-latest-311.tgz; mv /var/tmp/moodle/* /var/www/html/ && \
     chown -R apache: /var/www/html/ && \
-    mkdir /var/www/moodledata && \
-    chown -R 755 /var/www/moodledata/ && \
+    mkdir /var/moodledata && \
+    chown apache: /var/moodledata/ && \
+    chmod -R 777 /var/moodledata && \
     sed -i 's/^/#&/g' /etc/httpd/conf.d/welcome.conf 
 
 # Install PHP

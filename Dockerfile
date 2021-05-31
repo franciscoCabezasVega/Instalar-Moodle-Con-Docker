@@ -29,13 +29,21 @@ ENV MOODLE_URL=http://localhost \
 ENV SSL_PROXY false
 
 # Moodle requirements to install 
-RUN yum update -y && \
-    yum install epel-release httpd -y && \
-    yum install httpd -y && \
+RUN yum install httpd -y && \
     yum install policycoreutils-python curl nano cron \
     pwgen python-setuptools git unzip apache2 \
     postfix wget supervisor libcurl4 vim \
-    libcurl3-dev git-core -y
+    libcurl3-dev git-core -y && \
+    yum update -y
+
+# Install PHP
+RUN yum install epel-release yum-utils -y && \
+    yum install http://rpms.remirepo.net/enterprise/remi-release-7.rpm -y && \
+    yum-config-manager --enable remi-php73 -y && \
+    yum install php php-common php-opcache php-mcrypt php-cli php-gd php-curl php-mysqlnd php-xml php-xmlrpc -y
+
+# Setting and select the DB
+RUN yum install mysql-client php-mysql php-pgsql -y
 
 # Dowload Moodle from official page 
 RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable311/moodle-latest-311.tgz && \
@@ -46,15 +54,9 @@ RUN cd /var/tmp; curl -O https://download.moodle.org/download.php/direct/stable3
     chmod -R 777 /var/moodledata && \
     sed -i 's/^/#&/g' /etc/httpd/conf.d/welcome.conf 
 
-# Install PHP
-RUN yum install php7 php-curl php-mbstring php-opcache php-xml php-gd php-intl php-xmlrpc php-soap php-pecl-zip \
-    libapache2-mod-php php-zip php-ldap -y
-
-# Setting and select the DB
-RUN yum install mysql-client php-mysql php-pgsql -y
-
 # Copying files to specified path
 COPY ./vars/moodle-config.php /var/www/html/config.php
+COPY ./vars/phpversion.php /var/www/html/phpversion.php
 
 # Moodle configuration file cron and permission
 COPY ./config/moodlecron /etc/cron.d/moodlecron/

@@ -1,7 +1,6 @@
 # Docker LAMP Moodle-install
 FROM centos:7 
 
-# Dockerfile for moodle instance. more dockerish version of https://github.com/sergiogomez/docker-moodle
 # Volume to persist the information of moodledata
 VOLUME ["/var/moodledata"]
 
@@ -22,26 +21,26 @@ ENV MOODLE_URL=http://localhost \
     MYSQL_PASSWORD=admin \
     DB_ENV_MYSQL_PASSWORD=admin \
     DB_PORT_3306_TCP_ADDR=DB \
-    MOODLE_LANGUAGE=es_co
+    MOODLE_LANGUAGE=en
 
 # Enable when using external SSL reverse proxy
 # Default: false
 ENV SSL_PROXY false
 
 # Moodle requirements to install 
-RUN yum install httpd -y && \
+RUN yum update -y && \
+    yum install httpd -y && \
     yum install policycoreutils-python curl nano cron \
         pwgen python-setuptools git unzip apache2 \
         postfix wget supervisor libcurl4 vim \
-        libcurl3-dev git-core -y && \
-    yum update -y
+        libcurl3-dev git-core -y
 
 # Install PHP
 RUN yum install epel-release yum-utils -y && \
     yum install http://rpms.remirepo.net/enterprise/remi-release-7.rpm -y && \
     yum-config-manager --enable remi-php73 -y && \
     yum install php php-common php-opcache php-mcrypt php-cli php-gd php-curl php-mysqlnd php-xml php-xmlrpc \ 
-        php-mbstring php-pecl-zip php-intl php-soap -y
+        php-mbstring php-pecl-zip php-intl php-soap libsodium -y
 
 # Setting and select the DB
 RUN yum install mysql-client php-mysql php-pgsql -y
